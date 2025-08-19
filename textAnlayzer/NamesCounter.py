@@ -1,0 +1,122 @@
+import json
+import os
+import typing
+from SequenceCounter import load_Sentences_names, load_data
+
+
+class NamesCounter:
+    """
+    A class that responsible for counting people who have been appeared in people file
+    """
+
+    def __init__(self, QNum: int, sentence_input_path: typing.Union[str, os.PathLike] = None,
+                 remove_input_path: typing.Union[str, os.PathLike] = None,
+                 people_input_path: typing.Union[str, os.PathLike] = None,
+                 json_input_path: typing.Union[str, os.PathLike] = None, preprocessed: bool = False):
+        """
+        constructor for NamesCounter
+        :param QNum: the number of questions to get printed into json file result
+        :param sentence_input_path: file path for sentence input(default value None)
+        :param remove_input_path: file path for sentence input after preprocessing and removing(default value None)
+        :param people_input_path: path for people input  (default value None)
+        :param json_input_path: file path for json input to get __data from him (default value None)
+        """
+        self.__QNum = QNum
+        self.__json_input_path = json_input_path
+        self.__remove_input_path = remove_input_path
+        self.__sentence_input_path = sentence_input_path
+        self.__people_input_path = people_input_path
+        try:
+            if preprocessed:
+                self.__sentences, self.__names = load_Sentences_names(self.__json_input_path)
+            elif (self.__remove_input_path is not None and self.__sentence_input_path is not None and people_input_path
+                  is not None):
+                self.__sentences, self.__names = load_data(self.__sentence_input_path,
+                                                           self.__remove_input_path, self.__people_input_path)
+            else:
+                raise ValueError(
+                    "either json_input_path or remove_input_path and sentence_input_path or people_input_path must be "
+                    "provided")
+        except (FileNotFoundError, PermissionError, TypeError, Exception, ValueError) as e:
+            raise e(f"Error: {e}")  # Handle any file-related or other errors
+
+    def __build_names_dictionary(self) -> dict[str, list[str]]:
+        """
+        Builds the names dictionary based on the provided people list.
+        :return:A dictionary mapping individual words to the main name they belong to.
+        :note: This function optimizes runtime by making __data searches efficient (O(1) for each search).
+        :time: complexity: search = O(1), build = O(Len(names) * len(other names)).
+        """
+        mapToMain = {}
+        join_words = lambda words: ' '.join(words).strip()  # lambda function
+
+        for names in self.__names:
+            value = join_words(names[0]).strip()  # create the main __data sequence
+
+            for name in names[0]:
+                # Join the characters in name to form a single string (word)
+                word = ''.join(name)
+                if word in mapToMain:
+                    mapToMain[word].append(value)
+                else:
+                    mapToMain[word] = [value]  # Use the word string as the key
+            for name in names[1]:  # add nicknames to dictionary
+                word = ' '.join(name)  # Join the characters of the nickname
+                if word in mapToMain:  # check if the word exists in the dictionary
+                    if value not in mapToMain[word]:  # avoid adding duplicates
+                        mapToMain[word].append(value)
+                else:
+                    mapToMain[word] = [value]  # mapp the nickname to main name
+
+        return mapToMain
+
+    def count_names(self) -> (dict[str, int], dict[str, list[int]]):
+        """
+        Count the number of __sentences that contain each __data or part of a __data from the names list.
+        :return: A dictionary where each key is a __data/part and the value is the count of __sentences
+                 containing that __data/part.
+        """
+        counter = {}
+        names_appear_lines = {}  # dictionary to every word appearance line
+        mapToMain = self.__build_names_dictionary()  # get the dictionary's that we have been built before
+        for index, sentence in enumerate(self.__sentences):  # pass over the lines
+            sentence_len = len(sentence)
+            for startIdx in range(sentence_len):  # start index of the word to check if it was a name
+                for endIdx in range(startIdx + 1, sentence_len + 1):  # end index
+                    check_name = ' '.join(sentence[startIdx:endIdx])  # convert to string
+                    if check_name in mapToMain:  # check membership of the word as a name
+                        for name in mapToMain[check_name]:  # for all the names in the increase the counter
+                            counter[name] = counter.get(name, 0) + 1
+                            if name in names_appear_lines:
+                                names_appear_lines[name].append(index)
+                            else:
+                                names_appear_lines[name] = [index]
+        return counter, names_appear_lines
+
+    def return_results(self) -> str:
+        """
+        return the results of the class NamesCounter after count the names
+        :return: the result of count the names
+        """
+        names_counter, _ = self.count_names()
+        data = {
+            f"Question {self.__QNum}": {
+                "Name Mentions": sorted([[key, names_counter[key]] for key in names_counter.keys()])
+            }
+        }
+        json_data = json.dumps(data, indent=4)
+        return json_data
+
+    def get_names(self) -> list[list[str]]:
+        """
+        get the  list of names
+        :return: a list of sentences
+        """
+        return self.__names
+
+    def get_sentences(self) -> list[list[str]]:
+        """
+        get the  list of sentences
+        :return: a list of sentences
+        """
+        return self.__sentences

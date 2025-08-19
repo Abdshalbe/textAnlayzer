@@ -1,0 +1,14 @@
+
+# 4:43
+# task 9 example
+python3 main.py -t  9 -s Q9_examples/example_1/sentences_small_1.csv -r REMOVEWORDS.csv --threshold 1
+
+# 4:50
+# Extension 8  example
+python3 main.py -t 8 -s text_analyzer/2_examples/Q8_examples/example_1/sentences_small_1.csv -n text_analyzer/2_examples/Q8_examples/example_1/people_small_1.csv -r text_analyzer/1_data/Data/REMOVEWORDS.csv --windowsize  3 --threshold 2 --fixed_length 2   --pairs text_analyzer/2_examples/Q8_examples/example_1/people_connections_1.json
+
+# 4:55
+# Extension 8  example with  high fixed length will cause all will be false
+python3 main.py -t 8 -s text_analyzer/2_examples/Q8_examples/example_1/sentences_small_1.csv -n text_analyzer/2_examples/Q8_examples/example_1/people_small_1.csv -r text_analyzer/1_data/Data/REMOVEWORDS.csv --windowsize  3 --threshold 2 --fixed_length 5   --pairs text_analyzer/2_examples/Q8_examples/example_1/people_connections_1.json
+
+
